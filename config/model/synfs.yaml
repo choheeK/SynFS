@@ -1,0 +1,18 @@
+# views_dims will be overridden via CLI or defaults
+views_dims: [32, 48]
+hidden_dims: [32, 32]
+output_dim: 2
+
+batch_norm: True
+dropout: True
+activation: relu
+
+learning_rate: 1e-3
+s_learning_rate: 1e-3
+weight_decay: 1e-4
+
+s_lam: 0.1
+ns_lam: 0.1
+ns_alpha: 0.2
+
+save_dir: "./checkpoints/"

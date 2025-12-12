@@ -1,0 +1,10 @@
+defaults:
+  - model: synfs
+  - data: default
+  - optim: adam
+  - mlflow: default
+  - paths: default
+
+seed: 0
+nr_epochs: 20
+device: cuda
