@@ -91,20 +91,3 @@ def split_dataset(views, y, val_size=0.2, test_size=0.2, seed=0):
     te_y = y[test_idx]
 
     return (tr_X, tr_y), (va_X, va_y), (te_X, te_y)
-
-
-# -----------------------------
-# PyTorch Dataset Wrapper
-# -----------------------------
-class SimpleDataset(Dataset):
-    def __init__(self, data_set, y, device):
-        self.data_set = [torch.tensor(v, dtype=torch.float32).to(device) for v in data_set]
-        self.y = torch.tensor(y).long().to(device)
-        self.device = device
-
-    def __len__(self):
-        return len(self.data_set[0])
-
-    def __getitem__(self, i):
-        xs = [v[i] for v in self.data_set]
-        return xs, self.y[i]

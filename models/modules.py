@@ -61,6 +61,7 @@ class Selector(nn.Module):
         self.mean = mean # 0.5
         self.mu = 0.01*torch.randn(input_dim,)
         self.mu = torch.nn.Parameter(self.mu, requires_grad=True)
+        print('initial mu', self.mu )
         self.sigma = sigma
     
     def forward(self, prev_v, X_mean) -> None: 

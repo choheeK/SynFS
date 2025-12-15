@@ -241,6 +241,25 @@ class SynFSTrainer:
 
         return auroc, inf_loss.item(), synergy_loss.item(), nsynergy_loss.item()
 
+    @torch.no_grad()
+    def predict(self, views):
+        #t_index to check the target view , if none logits will be the same 
+        self.model.eval()
+        
+        if self.X_mean_set is None:
+            raise RuntimeError("X_mean_set is missing. Call trainer.set_X_mean_set(train_loader) first.")
+
+        X_mean_set = self.X_mean_set
+
+        with torch.no_grad():
+            S = self.model.get_detached_mu(self.model.s_model)
+            NS = self.model.get_detached_mu(self.model.ns_model)
+            all_mu = [torch.max(s, ns) for s, ns in zip(S, NS)]
+            all_z = [all_mu[i]*views[i]+(1-all_mu[i])*X_mean_set[i] for i in range(len(views))]
+            all_bar_logits = self.model.all_inf(torch.cat(all_z, dim=1))
+
+        return all_bar_logits
+
 
     @torch.no_grad()
     def evaluate(self, batch):
