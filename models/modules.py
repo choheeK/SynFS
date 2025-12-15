@@ -56,7 +56,7 @@ class Selector(nn.Module):
         sigma : constant for gaussian distribution
         device : device for the tensors to be created 
     """
-    def __init__(self, input_dim, sigma, mean=math.sqrt(0.5)) -> None:
+    def __init__(self, input_dim, sigma=0.5, mean=0.5) -> None:
         super(Selector, self).__init__()
         self.mean = mean # 0.5
         self.mu = 0.01*torch.randn(input_dim,)

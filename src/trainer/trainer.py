@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -7,356 +8,395 @@ from models.synfs_model import SynFSModel
 from utils.seed import fix_seed
 from utils.mlflow_logger import MLflowLogger
 
+import torch
+import torch.nn as nn
+from sklearn.metrics import roc_auc_score
+
 class SynFSTrainer:
-    def __init__(self, cfg):
+    def __init__(self, cfg, model):
         self.cfg = cfg
+        self.model = model
         self.device = cfg.device
 
-        self.model = SynFSModel(cfg.model).to(self.device)
         self.loss = nn.CrossEntropyLoss(reduction="none")
 
-        # Collect params
-        s_h_params = list(self.model.s_model.shared_predictor.parameters())
-        ns_h_params = list(self.model.ns_model.shared_predictor.parameters())
-
-        s_params = [p for sel in self.model.s_model.s_selectors for p in sel.parameters()]
-        ns_params = [p for sel in self.model.ns_model.s_selectors for p in sel.parameters()]
-
+        # optimizers exactly as original code
         self.opt_h = torch.optim.Adam(
-            s_h_params + ns_h_params,
+            list(self.model.s_model.shared_predictor.parameters()) +
+            list(self.model.ns_model.shared_predictor.parameters()),
             lr=cfg.model.learning_rate,
-            weight_decay=cfg.model.weight_decay
+            weight_decay=cfg.model.weight_decay,
         )
 
-        self.opt_s = torch.optim.Adam(s_params, lr=cfg.model.s_learning_rate)
-        self.opt_ns = torch.optim.Adam(ns_params, lr=cfg.model.s_learning_rate)
+        self.opt_s = torch.optim.Adam(
+            [p for sel in self.model.s_model.s_selectors for p in sel.parameters()],
+            lr=cfg.model.s_learning_rate,
+        )
 
-        all_params = s_params + ns_params + list(self.model.all_inf.parameters())
+        self.opt_ns = torch.optim.Adam(
+            [p for sel in self.model.ns_model.s_selectors for p in sel.parameters()],
+            lr=cfg.model.s_learning_rate,
+        )
+
         self.opt_allinf = torch.optim.Adam(
-            all_params,
+            [p for sel in self.model.s_model.s_selectors for p in sel.parameters()] +
+            [p for sel in self.model.ns_model.s_selectors for p in sel.parameters()] +
+            list(self.model.all_inf.parameters()),
             lr=cfg.model.learning_rate,
-            weight_decay=cfg.model.weight_decay
+            weight_decay=cfg.model.weight_decay,
         )
 
-    # ---------- helper ----------
-    def mask_generator(self, batch):
+        self.X_mean_set = None
+
+    # ---------------------------------------------------------
+    # Compute GLOBAL mean of each view (original code behavior)
+    # ---------------------------------------------------------
+    def compute_view_means_from_loader(self, loader):
+        """
+        Computes global mean of each view by iterating once over the loader.
+        Equivalent to original code using full tr_X_set.
+        """
+        n_views = len(self.cfg.model.views_dims)
+        sums = [0] * n_views
+        counts = 0
+
+        for views, _ in loader:
+            views = [v.to(self.device) for v in views]
+            batch_size = views[0].shape[0]
+
+            for i in range(n_views):
+                sums[i] = sums[i] + views[i].sum(0)
+            counts += batch_size
+
+        return [s / counts for s in sums]
+
+    def set_X_mean_set(self, train_loader):
+        self.X_mean_set = self.compute_view_means_from_loader(train_loader)
+
+    # ---------------------------------------------------------
+    # Mask generator (unchanged from original logic)
+    # ---------------------------------------------------------
+    def mask_generator(self, batch_size):
+        masks = []
         dims = self.cfg.model.views_dims
         total = sum(dims)
-        masks = []
-        cumsum = np.cumsum(dims)
 
-        base = torch.zeros(batch, total).to(self.device)
+        cumsum = torch.tensor(dims).cumsum(0)
+        blank = torch.zeros(batch_size, total, device=self.device)
+
         for i in range(len(dims)):
-            m = base.clone()
-            start = 0 if i == 0 else cumsum[i-1]
-            end = cumsum[i]
-            m[:, start:end] = 1
+            m = blank.clone()
+            if i == 0:
+                m[:, :cumsum[i]] = 1
+            else:
+                m[:, cumsum[i - 1]:cumsum[i]] = 1
             masks.append(m)
+
         return masks
 
-    def _compute_regularizer(self, selector):
-        reg_fn = selector.regularizer
-        return torch.mean(reg_fn(selector.mu / selector.sigma))
+    def reg(self, selector):
+        return torch.mean(selector.regularizer(selector.mu / selector.sigma))
 
 
-    # ---------- train ----------
     def train_step(self, batch):
-        """
-        One training iteration. Fully rewritten version of your original logic
-        with identical mathematical behavior.
 
-        Returns:
-            dict: { "loss": float, "auroc": float }
-        """
+        if self.X_mean_set is None:
+            raise RuntimeError("X_mean_set missing. Call set_X_mean_set() first.")
+
+        X_mean_set = self.X_mean_set
+
+        # -----------------------------
+        # Prepare data
+        # -----------------------------
         views, y = batch
         y = y.to(self.device)
-
-        # Move views to device
         views = [v.to(self.device) for v in views]
 
         batch_size = y.size(0)
         masks = self.mask_generator(batch_size)
 
-        # ============================================================
-        # 1) Forward pass through selectors (with noise)
-        # ============================================================
-        v_s = [sel(views[i], views[i].mean(0)) for i, sel in enumerate(self.model.s_model.s_selectors)]
-        v_n = [sel(views[i], views[i].mean(0)) for i, sel in enumerate(self.model.ns_model.s_selectors)]
+        # =========================================================================
+        # 1) SELECTOR FORWARD PASS (same noise behavior as original)
+        # =========================================================================
+        v_s, z_s = [], []
+        for i, sel in enumerate(self.model.s_model.s_selectors):
+            out = sel(views[i], X_mean_set[i])
+            v_s.append(out)
+            z_s.append(sel.z)
 
-        # z-values (before sigmoid), also contain noise
-        z_s = [sel.z for sel in self.model.s_model.s_selectors]
-        z_n = [sel.z for sel in self.model.ns_model.s_selectors]
+        v_n, z_n = [], []
+        for i, sel in enumerate(self.model.ns_model.s_selectors):
+            out = sel(views[i], X_mean_set[i])
+            v_n.append(out)
+            z_n.append(sel.z)
+        # helper forward
+        def fwd(model, vlist):
+            full = torch.cat(vlist, dim=1)
+            outs = [model.shared_predictor(full * m) for m in masks]
+            outs.append(model.shared_predictor(full))
+            return outs
 
-        # ============================================================
-        # 2) Predictor Phase: h_loss (shared predictor update)
-        # ============================================================
-        def forward_views(model, v_list):
-            logits = []
-            concat = torch.cat(v_list, dim=1)
-            for m in masks:
-                logits.append(model.shared_predictor(concat * m))
-            logits.append(model.shared_predictor(concat))  # full-view
-            return logits
+        # =========================================================================
+        # 2) PREDICTOR UPDATE (p_loss)  — EXACT SAME AS ORIGINAL
+        # =========================================================================
+        n_logits = fwd(self.model.ns_model, v_n)
+        s_logits = fwd(self.model.s_model, v_s)
 
-        n_logits = forward_views(self.model.ns_model, v_n)
-        s_logits = forward_views(self.model.s_model, v_s)
+        n_losses = [self.loss(l, y) for l in n_logits]
+        s_losses = [self.loss(l, y) for l in s_logits]
 
-        n_losses = [self.loss(logit, y) for logit in n_logits]
-        s_losses = [self.loss(logit, y) for logit in s_logits]
+        p_loss = torch.mean(torch.sum(torch.stack(n_losses + s_losses, dim=1), dim=1))
 
-        # h_loss = mean over batch( sum over views(n,s losses) )
-        h_loss = torch.mean(torch.sum(torch.stack(n_losses + s_losses, dim=1), dim=1))
-
-        # Optimize (shared predictor only)
         self.opt_h.zero_grad()
-        h_loss.backward(retain_graph=True)
+        p_loss.backward(retain_graph=True)
         self.opt_h.step()
 
-        # ============================================================
-        # 3) Synergistic selector + All-Informative predictor
-        # ============================================================
-
-        # gates WITH noise (max(z_s, z_n))
+        # =========================================================================
+        # 3) Synergistic Selector & Predictor 
+        # =========================================================================
+        # ALL-INF gate = max(hard_sigmoid(z_s), hard_sigmoid(z_n))
         all_gates = [
             self.model.s_model.s_selectors[0].hard_sigmoid(torch.max(s, n))
             for s, n in zip(z_s, z_n)
         ]
 
-        # fill missing values with view-wise mean
-        X_means = [v.mean(0) for v in views]
-        all_v = [views[i] * all_gates[i] + X_means[i] * (1 - all_gates[i])
-                 for i in range(len(views))]
+        all_v = [
+            views[i] * all_gates[i] + X_mean_set[i] * (1 - all_gates[i])
+            for i in range(len(views))
+        ]
 
-        # regularizers
-        s_regs = [self._compute_regularizer(sel) for sel in self.model.s_model.s_selectors]
+        # use original hard_sigmoid
+        gate_s = [self.model.s_model.s_selectors[0].hard_sigmoid(z) for z in z_s]
+        gate_n = [self.model.s_model.s_selectors[0].hard_sigmoid(z) for z in z_n]
 
-        # all-inf logit
+        s_regs = [self.reg(sel) for sel in self.model.s_model.s_selectors]
+
+        # inf-loss
         all_inf_logits = self.model.all_inf(torch.cat(all_v, dim=1))
-        all_inf_loss = torch.mean(self.loss(all_inf_logits, y))
+        inf_loss = torch.mean(self.loss(all_inf_logits, y))
 
-        # Synergy: full predictor minus sum of masked predictors
-        s_logits = forward_views(self.model.s_model, v_s)
-        s_full = s_logits[-1]
-        s_losses = [self.loss(logit, y) for logit in s_logits[:-1]]
-        s_full_loss = self.loss(s_full, y)
+        # Synergy loss: v_bar - masked_sum + reg
+        s_logits = fwd(self.model.s_model, v_s)
+        s_v_bar = s_logits[-1]
+        s_masked = s_logits[:-1]
+
 
         synergy_loss = torch.mean(
-            s_full_loss
-            - torch.sum(torch.stack(s_losses, dim=1), dim=1)
+            self.loss(s_v_bar, y)
+            - torch.sum(
+                torch.stack([self.loss(l, y) for l in s_masked], dim=1),
+                dim=1,
+            )
             + self.cfg.model.s_lam * torch.mean(torch.stack(s_regs))
         )
 
-        # optimize synergy & all-informative
         self.opt_allinf.zero_grad()
         self.opt_s.zero_grad()
-
-        all_inf_loss.backward(retain_graph=True)
+        inf_loss.backward(retain_graph=True)
         synergy_loss.backward()
-
         self.opt_allinf.step()
         self.opt_s.step()
 
-        # ============================================================
-        # 4) Non-synergistic selector loss (repulsion term)
-        # ============================================================
+        # =========================================================================
+        # 4) NON-SYNERGISTIC SELECTOR UPDATE
+        # =========================================================================
 
-        gate_s = [torch.sigmoid(z) for z in z_s]
-        gate_n = [torch.sigmoid(z) for z in z_n]
 
-        # cosine similarity penalty
         sim = torch.nn.functional.cosine_similarity(
             torch.cat(gate_s, dim=1),
             torch.cat(gate_n, dim=1),
             dim=1
         )
 
-        # regularizers for non-synergy
-        ns_regs = [self._compute_regularizer(sel) for sel in self.model.ns_model.s_selectors]
+        ns_regs = [self.reg(sel) for sel in self.model.ns_model.s_selectors]
 
-        # compute non-synergy predictor outputs
-        n_logits = forward_views(self.model.ns_model, v_n)
-        n_full = n_logits[-1]
-        n_losses = [self.loss(logit, y) for logit in n_logits[:-1]]
-        n_full_loss = self.loss(n_full, y)
+        n_logits = fwd(self.model.ns_model, v_n)
+        n_v_bar = n_logits[-1]
+        n_masked = n_logits[:-1]
 
         nsynergy_loss = torch.mean(
-            -n_full_loss
-            + torch.sum(torch.stack(n_losses, dim=1), dim=1)
+            -self.loss(n_v_bar, y)
+            + torch.sum(
+                torch.stack([self.loss(l, y) for l in n_masked], dim=1),
+                dim=1,
+            )
             + self.cfg.model.ns_lam * torch.mean(torch.stack(ns_regs))
             + self.cfg.model.ns_alpha * sim
         )
 
-        # optimize non-synergistic
         self.opt_ns.zero_grad()
         nsynergy_loss.backward()
         self.opt_ns.step()
 
-        # ============================================================
-        # 5) Compute AUROC
-        # ============================================================
-
+        # =========================================================================
+        # 5) AUROC (same return order as original)
+        # =========================================================================
         try:
-            ai = roc_auc_score(y.cpu().numpy(), all_inf_logits.detach().cpu().numpy()[:, 1])
-            sn = roc_auc_score(y.cpu().numpy(), s_full.detach().cpu().numpy()[:, 1])
-            nn = roc_auc_score(y.cpu().numpy(), n_full.detach().cpu().numpy()[:, 1])
-            auroc = float(ai)
+            auroc = roc_auc_score(
+                y.detach().cpu().numpy(),
+                all_inf_logits.detach().cpu().numpy()[:, 1]
+            )
         except:
             auroc = 0.0
 
-        # ============================================================
-        # 6) Total loss (for logging only)
-        # ============================================================
-        total_loss = (
-            float(h_loss.detach().cpu())
-            + float(all_inf_loss.detach().cpu())
-            + float(synergy_loss.detach().cpu())
-            + float(nsynergy_loss.detach().cpu())
-        ) / 4.0
+        return auroc, inf_loss.item(), synergy_loss.item(), nsynergy_loss.item()
 
-        return {
-            "loss": total_loss,
-            "auroc": auroc,
-        }
 
-    def train(self, train_loader, val_loader):
-        logger = MLflowLogger(self.cfg)
-
-        for epoch in range(self.cfg.nr_epochs):
-            train_metrics = self.run_epoch(train_loader)
-            val_metrics   = self.run_val(val_loader)
-
-            logger.log_metrics(train_metrics, epoch, prefix="train")
-            logger.log_metrics(val_metrics, epoch, prefix="val")
-
-        logger.save_model(self.model, "model")
-        logger.end()
-
-    def run_epoch(self, loader):
-        self.model.train()
-        metrics_list = []
-
-        for batch in loader:
-            metrics = self.train_step(batch)
-            metrics_list.append(metrics["loss"])
-
-        return {"loss": float(np.mean(metrics_list))}
-
-    def run_val(self, loader):
+    @torch.no_grad()
+    def evaluate(self, batch):
         """
-        Validation loop
-
-        Returns dict:
-            {
-                "loss": float,
-                "auroc": float,
-                "s_auroc": float,
-                "n_auroc": float
-            }
+        Exact reproduction of original SynFS.evaluate().
+        Returns:
+            ai_auroc, n_auroc, s_auroc, s_gate, ns_gate,
+            all_inf_loss, nsynergy_loss, synergy_loss
         """
+        if self.X_mean_set is None:
+            raise RuntimeError("X_mean_set is missing. Call trainer.set_X_mean_set(train_loader) first.")
 
-        self.model.eval()
+        X_mean_set = self.X_mean_set
 
-        all_ai = []
-        all_s = []
-        all_n = []
-        all_losses = []
+        views, y = batch
+        y = y.to(self.device)
+        views = [v.to(self.device) for v in views]
 
-        for batch in loader:
-            views, y = batch
-            y = y.to(self.device)
-            views = [v.to(self.device) for v in views]
-            batch_size = y.size(0)
+        batch_size = y.shape[0]
+        masks = self.mask_generator(batch_size)
 
-            # ------------------------------------------------------------
-            # 1. Compute gates WITHOUT gradient (detached mu)
-            # ------------------------------------------------------------
-            S  = [sel.hard_sigmoid(sel.mu.detach()) for sel in self.model.s_model.s_selectors]
-            NS = [sel.hard_sigmoid(sel.mu.detach()) for sel in self.model.ns_model.s_selectors]
+        # ----------------------------------------------------
+        # 1. Compute μ-based (detached) gates without noise
+        # ----------------------------------------------------
+        S = self.model.get_detached_mu(self.model.s_model)
+        NS = self.model.get_detached_mu(self.model.ns_model)
 
-            # all-inf gate = max(S, NS)
-            ALL = [torch.max(s, n) for s, n in zip(S, NS)]
+        # all-gate = max(s, ns)
+        all_mu = [torch.max(s, ns) for s, ns in zip(S, NS)]
 
-            # means for missing fill
-            X_means = [v.mean(0) for v in views]
+        # Replace missing features using global mean
+        all_v = [
+            all_mu[i] * views[i] + (1 - all_mu[i]) * X_mean_set[i]
+            for i in range(len(views))
+        ]
 
-            # ------------------------------------------------------------
-            # 2. Build all-inf views
-            # ------------------------------------------------------------
-            all_z = [
-                ALL[i] * views[i] + (1 - ALL[i]) * X_means[i]
+        # ----------------------------------------------------
+        # 2. Compute all-inf logits
+        # ----------------------------------------------------
+        all_inf_logits = self.model.all_inf(torch.cat(all_v, dim=1))
+
+        # ----------------------------------------------------
+        # 3. Forward for masked/unmasked predictors
+        # ----------------------------------------------------
+        def eval_forward(model, gates):
+            v_list = [
+                gates[i] * views[i] + (1 - gates[i]) * X_mean_set[i]
                 for i in range(len(views))
             ]
+            concat = torch.cat(v_list, dim=1)
 
-            # all-inf logits
-            all_bar_logits = self.model.all_inf(torch.cat(all_z, dim=1))
-            ai_loss = torch.mean(self.loss(all_bar_logits, y))
+            logits = []
+            for m in masks:
+                logits.append(model.shared_predictor(concat * m))
 
-            # ------------------------------------------------------------
-            # 3. Build synergy and non-synergy logits for all views
-            # ------------------------------------------------------------
-            def forward_views(model, gates):
-                """Helper to compute masked+full logits."""
-                masks = self.mask_generator(batch_size)
-                z_list = [g * v + (1 - g) * xm for g, v, xm in zip(gates, views, X_means)]
-                concat = torch.cat(z_list, dim=1)
+            logits.append(model.shared_predictor(concat))
+            return logits
 
-                logits = []
-                for m in masks:
-                    logits.append(model.shared_predictor(concat * m))
+        s_logits = eval_forward(self.model.s_model, S)
+        n_logits = eval_forward(self.model.ns_model, NS)
 
-                full = model.shared_predictor(concat)
-                logits.append(full)
-                return logits
+        # losses
+        s_losses = [self.loss(l, y) for l in s_logits]
+        n_losses = [self.loss(l, y) for l in n_logits]
 
-            s_logits = forward_views(self.model.s_model, S)
-            n_logits = forward_views(self.model.ns_model, NS)
+        all_inf_loss = torch.mean(self.loss(all_inf_logits, y))
 
-            # ------------------------------------------------------------
-            # 4. Compute losses EXACTLY like original code
-            # ------------------------------------------------------------
-            # synergy losses
-            s_losses = [self.loss(l, y) for l in s_logits]
-            s_full = s_losses[-1]
-            s_partial = s_losses[:-1]
+        # synergy
+        s_v_bar_loss = s_losses[-1]
+        synergy_loss = torch.mean(
+            s_v_bar_loss - torch.sum(torch.stack(s_losses[:-1], dim=1), dim=1)
+        )
 
-            synergy_loss = torch.mean(
-                s_full - torch.sum(torch.stack(s_partial, dim=1), dim=1)
+        # non-synergy
+        n_v_bar_loss = n_losses[-1]
+        nsynergy_loss = -torch.mean(
+            n_v_bar_loss - torch.sum(torch.stack(n_losses[:-1], dim=1), dim=1)
+        )
+
+        # ----------------------------------------------------
+        # 4. Compute AUROC
+        # ----------------------------------------------------
+        try:
+            ai_auroc = roc_auc_score(
+                y.cpu().numpy(), all_inf_logits.cpu().numpy()[:, 1]
             )
-
-            # non-synergy losses
-            n_losses = [self.loss(l, y) for l in n_logits]
-            n_full = n_losses[-1]
-            n_partial = n_losses[:-1]
-
-            nsynergy_loss = torch.mean(
-                -(n_full - torch.sum(torch.stack(n_partial, dim=1), dim=1))
+            n_auroc = roc_auc_score(
+                y.cpu().numpy(), n_logits[-1].cpu().numpy()[:, 1]
             )
+            s_auroc = roc_auc_score(
+                y.cpu().numpy(), s_logits[-1].cpu().numpy()[:, 1]
+            )
+        except:
+            ai_auroc, n_auroc, s_auroc = 0.0, 0.0, 0.0
 
-            # ------------------------------------------------------------
-            # 5. Compute AUROCs
-            # ------------------------------------------------------------
-            try:
-                ai_auroc = roc_auc_score(y.cpu().numpy(), all_bar_logits.cpu().numpy()[:, 1])
-                s_auroc  = roc_auc_score(y.cpu().numpy(), s_logits[-1].cpu().numpy()[:, 1])
-                n_auroc  = roc_auc_score(y.cpu().numpy(), n_logits[-1].cpu().numpy()[:, 1])
-            except:
-                ai_auroc = 0.0
-                s_auroc  = 0.0
-                n_auroc  = 0.0
+        return (
+            float(ai_auroc),
+            float(n_auroc),
+            float(s_auroc),
+            torch.cat(S),
+            torch.cat(NS),
+            float(all_inf_loss),
+            float(nsynergy_loss),
+            float(synergy_loss),
+        )
+    def train_epoch(self, train_loader):
+        self.model.train()
 
-            # collect
-            all_ai.append(ai_auroc)
-            all_s.append(s_auroc)
-            all_n.append(n_auroc)
-            all_losses.append(float(ai_loss))
+        
+        losses = []
+        aurocs = []
 
-        # ============================================================
-        # 6. Return aggregated metrics
-        # ============================================================
+        for batch in train_loader:
+            auroc, a_loss, s_loss, n_loss = self.train_step(batch)
+            aurocs.append(float(auroc))
+            losses.append(float(a_loss + s_loss + n_loss))
+
         return {
-            "loss": float(np.mean(all_losses)),
-            "auroc": float(np.mean(all_ai)),
-            "s_auroc": float(np.mean(all_s)),
-            "n_auroc": float(np.mean(all_n)),
+            "loss": float(np.mean(losses)),
+            "auroc": float(np.mean(aurocs)),
         }
-        return {"loss": 0.0}
+
+
+    # =====================================================================
+    # VALIDATE ONE EPOCH
+    # =====================================================================
+    @torch.no_grad()
+    def validate_epoch(self, val_loader):
+        self.model.eval()
+        losses = []
+        aurocs = []
+
+        for batch in val_loader:
+            ai_auroc, n_auroc, s_auroc, s_gate, ns_gate, a_loss, n_loss, s_loss = \
+                self.evaluate(batch)
+
+            aurocs.append(float(ai_auroc))
+            losses.append(float(a_loss + s_loss + n_loss))
+
+        return {
+            "loss": float(np.mean(losses)),
+            "auroc": float(np.mean(aurocs)),
+        }
+
+
+    # =====================================================================
+    # TOP-LEVEL TRAIN LOOP
+    # =====================================================================
+    def train(self, train_loader, val_loader=None):
+
+        # compute dataset-level mean ONCE (correct SynFS behavior)
+        self.set_X_mean_set(train_loader)
+        for epoch in range(self.cfg.nr_epochs):
+            train_metrics = self.train_epoch(train_loader)
+            print(f"[Epoch {epoch+1}] Train AUROC = {train_metrics['auroc']:.4f}")
+
+            if val_loader is not None:
+                val_metrics = self.validate_epoch(val_loader)
+                print(f"[Epoch {epoch+1}] Val AUROC   = {val_metrics['auroc']:.4f}")
