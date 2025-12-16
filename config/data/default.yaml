@@ -1,4 +1,5 @@
-train_path: "./data/train.pkl"
-val_path: "./data/val.pkl"
+train_path: null
+val_path: null
+views_dims : [10, 10]
 batch_size: 64
 num_workers: 4

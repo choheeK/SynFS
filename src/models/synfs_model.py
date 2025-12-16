@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from models.modules import FS_predictor, predictor, Selector
-from models.util import _standard_truncnorm_sample
+from .modules import FS_predictor, predictor
+from .util import _standard_truncnorm_sample
 
 class SynFSModel(nn.Module):
     """

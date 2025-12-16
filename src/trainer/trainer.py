@@ -4,10 +4,6 @@ import torch.nn as nn
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
-from models.synfs_model import SynFSModel
-from utils.seed import fix_seed
-from utils.mlflow_logger import MLflowLogger
-
 import torch
 import torch.nn as nn
 from sklearn.metrics import roc_auc_score

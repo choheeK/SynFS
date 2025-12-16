@@ -1,5 +1,5 @@
 # views_dims will be overridden via CLI or defaults
-views_dims: [32, 48]
+views_dims: [10, 10]
 hidden_dims: [32, 32]
 output_dim: 2
 
