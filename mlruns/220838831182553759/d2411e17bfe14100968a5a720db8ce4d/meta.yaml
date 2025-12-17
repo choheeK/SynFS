@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/220838831182553759/d2411e17bfe14100968a5a720db8ce4d/artifacts
+deleted_time: 1765984095864
+end_time: 1765984063490
+entry_point_name: ''
+experiment_id: '220838831182553759'
+lifecycle_stage: deleted
+run_id: d2411e17bfe14100968a5a720db8ce4d
+run_name: amusing-fawn-988
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765984063439
+status: 3
+tags: []
+user_id: choheekim

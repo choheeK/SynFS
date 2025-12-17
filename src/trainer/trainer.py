@@ -3,14 +3,13 @@ import torch
 import torch.nn as nn
 import numpy as np
 from sklearn.metrics import roc_auc_score
-
-import torch
-import torch.nn as nn
-from sklearn.metrics import roc_auc_score
+from src.utils.mlflow_logger import MLflowLogger
 
 class SynFSTrainer:
     def __init__(self, cfg, model):
         self.cfg = cfg
+        self.logger = MLflowLogger(cfg)
+
         self.model = model
         self.device = cfg.device
 
@@ -411,7 +410,26 @@ class SynFSTrainer:
         for epoch in range(self.cfg.nr_epochs):
             train_metrics = self.train_epoch(train_loader)
             print(f"[Epoch {epoch+1}] Train AUROC = {train_metrics['auroc']:.4f}")
+            
+            self.logger.log_metrics(
+                {
+                    "train_loss": train_metrics["loss"],
+                    "train_auroc": train_metrics["auroc"],
+                },
+                step=epoch
+            )
+
+
 
             if val_loader is not None:
                 val_metrics = self.validate_epoch(val_loader)
                 print(f"[Epoch {epoch+1}] Val AUROC   = {val_metrics['auroc']:.4f}")
+
+                self.logger.log_metrics(
+                {
+                    "val_loss": val_metrics["loss"],
+                    "val_auroc": val_metrics["auroc"],
+                },
+                step=epoch
+                )
+

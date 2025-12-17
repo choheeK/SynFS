@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/220838831182553759/a4f5310b8e1f472ba00e78477b06b3e9/artifacts
+deleted_time: 1765984095857
+end_time: 1765984064101
+entry_point_name: ''
+experiment_id: '220838831182553759'
+lifecycle_stage: deleted
+run_id: a4f5310b8e1f472ba00e78477b06b3e9
+run_name: valuable-turtle-929
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765984064040
+status: 3
+tags: []
+user_id: choheekim

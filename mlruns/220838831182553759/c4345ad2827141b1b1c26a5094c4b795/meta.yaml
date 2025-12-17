@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/220838831182553759/c4345ad2827141b1b1c26a5094c4b795/artifacts
+end_time: 1765984067134
+entry_point_name: ''
+experiment_id: '220838831182553759'
+lifecycle_stage: active
+run_id: c4345ad2827141b1b1c26a5094c4b795
+run_name: brawny-shrike-860
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765984067084
+status: 3
+tags: []
+user_id: choheekim

@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/220838831182553759/712e5b6f71e7423bbcc90b71322c287f/artifacts
+deleted_time: 1765984095870
+end_time: 1765983750355
+entry_point_name: ''
+experiment_id: '220838831182553759'
+lifecycle_stage: deleted
+run_id: 712e5b6f71e7423bbcc90b71322c287f
+run_name: rambunctious-bat-265
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765983750345
+status: 4
+tags: []
+user_id: choheekim

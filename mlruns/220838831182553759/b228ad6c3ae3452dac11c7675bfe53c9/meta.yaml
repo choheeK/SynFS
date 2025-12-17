@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/220838831182553759/b228ad6c3ae3452dac11c7675bfe53c9/artifacts
+deleted_time: 1765984095855
+end_time: 1765984064494
+entry_point_name: ''
+experiment_id: '220838831182553759'
+lifecycle_stage: deleted
+run_id: b228ad6c3ae3452dac11c7675bfe53c9
+run_name: intrigued-conch-773
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765984064433
+status: 3
+tags: []
+user_id: choheekim

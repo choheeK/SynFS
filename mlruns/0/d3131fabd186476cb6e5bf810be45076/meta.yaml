@@ -1,0 +1,14 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/0/d3131fabd186476cb6e5bf810be45076/artifacts
+end_time: 1765984495544
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: d3131fabd186476cb6e5bf810be45076
+run_name: overjoyed-slug-911
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765984495448
+status: 3
+tags: []
+user_id: choheekim

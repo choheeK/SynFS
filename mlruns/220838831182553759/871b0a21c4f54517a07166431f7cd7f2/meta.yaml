@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/220838831182553759/871b0a21c4f54517a07166431f7cd7f2/artifacts
+deleted_time: 1765984095846
+end_time: 1765984066204
+entry_point_name: ''
+experiment_id: '220838831182553759'
+lifecycle_stage: deleted
+run_id: 871b0a21c4f54517a07166431f7cd7f2
+run_name: loud-pug-655
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765984066142
+status: 3
+tags: []
+user_id: choheekim

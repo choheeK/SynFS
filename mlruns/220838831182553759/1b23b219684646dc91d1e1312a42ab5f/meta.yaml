@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/220838831182553759/1b23b219684646dc91d1e1312a42ab5f/artifacts
+deleted_time: 1765984095854
+end_time: 1765984065156
+entry_point_name: ''
+experiment_id: '220838831182553759'
+lifecycle_stage: deleted
+run_id: 1b23b219684646dc91d1e1312a42ab5f
+run_name: wistful-vole-150
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765984065096
+status: 3
+tags: []
+user_id: choheekim

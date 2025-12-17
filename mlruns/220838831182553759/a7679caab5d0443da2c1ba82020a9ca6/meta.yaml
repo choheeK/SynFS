@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/choheekim/SynFS/mlruns/220838831182553759/a7679caab5d0443da2c1ba82020a9ca6/artifacts
+deleted_time: 1765984095842
+end_time: 1765984066751
+entry_point_name: ''
+experiment_id: '220838831182553759'
+lifecycle_stage: deleted
+run_id: a7679caab5d0443da2c1ba82020a9ca6
+run_name: illustrious-bee-824
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1765984066682
+status: 3
+tags: []
+user_id: choheekim

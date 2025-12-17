@@ -15,3 +15,6 @@ matplotlib
 hydra-core
 omegaconf
 pyyaml
+
+# logging
+mlflow

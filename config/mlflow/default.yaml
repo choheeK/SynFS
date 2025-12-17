@@ -1,5 +1,2 @@
-mlflow:
-  tracking_uri: "file:./mlruns"
-  experiment_name: "SynFS"
-  run_name: "default_run"
-  log_model: true
+enabled: true
+experiment_name: default
