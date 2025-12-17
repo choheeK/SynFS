@@ -32,8 +32,9 @@ class MLflowLogger:
         # 1. Set tracking URI (Hydra-safe)
         # --------------------------------------------------
         project_root = get_original_cwd()
-        mlruns_dir = Path(project_root) / "mlruns"
-        mlflow.set_tracking_uri(f"file:{mlruns_dir}")
+        mlruns_dir = f"file://{project_root}/mlruns"
+        mlflow.set_tracking_uri(mlruns_dir)
+
 
         # --------------------------------------------------
         # 2. Set experiment

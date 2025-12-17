@@ -407,6 +407,9 @@ class SynFSTrainer:
 
         # compute dataset-level mean ONCE (correct SynFS behavior)
         self.set_X_mean_set(train_loader)
+
+        best_val_auroc = -float("inf")
+
         for epoch in range(self.cfg.nr_epochs):
             train_metrics = self.train_epoch(train_loader)
             print(f"[Epoch {epoch+1}] Train AUROC = {train_metrics['auroc']:.4f}")
@@ -424,6 +427,7 @@ class SynFSTrainer:
             if val_loader is not None:
                 val_metrics = self.validate_epoch(val_loader)
                 print(f"[Epoch {epoch+1}] Val AUROC   = {val_metrics['auroc']:.4f}")
+                best_val_auroc = max(best_val_auroc, val_metrics["auroc"])
 
                 self.logger.log_metrics(
                 {
@@ -433,3 +437,4 @@ class SynFSTrainer:
                 step=epoch
                 )
 
+        return best_val_auroc

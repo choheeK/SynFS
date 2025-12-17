@@ -14,3 +14,10 @@ python -m pip install --upgrade pip setuptools wheel
 # install requirements
 pip install -r requirements.txt
 '''
+
+
+## Use MLFLOW to track experiments
+
+'''bash
+mllfow ui
+'''

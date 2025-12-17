@@ -18,3 +18,6 @@ pyyaml
 
 # logging
 mlflow
+
+# sweeper
+hydra-optuna-sweeper optuna

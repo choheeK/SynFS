@@ -21,7 +21,9 @@ def main(cfg: DictConfig):
         train_loader, val_loader = build_dataloaders(cfg)
         model = SynFSModel(cfg.model)
         trainer = SynFSTrainer(cfg, model)
-        trainer.train(train_loader, val_loader)
+        best_val_auroc = trainer.train(train_loader, val_loader)
+        
+    return best_val_auroc
 
 
 if __name__ == "__main__":
