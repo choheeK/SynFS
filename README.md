@@ -25,6 +25,10 @@ pip install -r requirements.txt
 python train.py
 ```
 
+## To use your own data
+- revise datapath from config/data/default.yaml
+
+
 ## Use MLFLOW to track experiments
 
 ```bash
