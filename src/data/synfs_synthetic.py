@@ -3,6 +3,9 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
+import os
+import pandas as pd
+from pathlib import Path
 
 # -----------------------------
 # Ground-truth feature selectors
@@ -91,3 +94,29 @@ def split_dataset(views, y, val_size=0.2, test_size=0.2, seed=0):
     te_y = y[test_idx]
 
     return (tr_X, tr_y), (va_X, va_y), (te_X, te_y)
+
+
+if __name__ == "__main__":
+    # generate dummy data and save 
+
+    views_dims = [10, 10]
+
+    views, y, _ = generate_multi_dataset(
+    n=1000,
+    dims=views_dims,
+    seed=42,
+    )
+
+    print(f'Generate synthetic data with views dims {views_dims}')
+    view1 = views[0]
+    view2 = views[1]
+
+    # file = src/data/synfs_synthetic.py
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    dump_path = PROJECT_ROOT / "synthetic_dummy_data"
+
+    np.savetxt(os.path.join(dump_path, 'view1.csv'), view1, delimiter=",")
+    np.savetxt(os.path.join(dump_path, 'view2.csv'), view2, delimiter=",")
+    np.savetxt(os.path.join(dump_path, 'y.csv'), y, delimiter=",")
+
+    print(f'Done saving to path {dump_path}')
