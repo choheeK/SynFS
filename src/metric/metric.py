@@ -9,7 +9,7 @@ import pdb
 import torch
 from torch.utils.data import DataLoader
 
-from data.dataset import NumpyDataset, SimpleDataset
+from src.data.dataset import NumpyDataset, SimpleDataset
 
 def sklearn_accuracy(x, y):
     x = x > 0.5

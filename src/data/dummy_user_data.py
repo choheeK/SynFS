@@ -1,7 +1,8 @@
 # src/data/dummy_user_data.py
 
+from pathlib import Path
+import numpy as np
 import torch
-from torch.utils.data import Dataset
 
 from .base_dataset import MultiViewDataset
 from .synfs_synthetic import generate_multi_dataset
@@ -11,51 +12,62 @@ class UserMultiViewDataset(MultiViewDataset):
     """
     Canonical dataset for SynFS.
 
-    If data_path is None:
-        -> generate dummy synthetic data (for validation)
-    If data_path is provided:
-        -> user should load real data there
+    Supports:
+    - Arbitrary number of views
+    - train / val / test splits
+    - CSV-based real data OR synthetic fallback
     """
 
     def __init__(
         self,
-        data_path: str | None,
-        views_dims: list[int],
+        cfg,
+        split: str = "train",
         device: str = "cpu",
     ):
         super().__init__()
 
+        if split not in cfg.data:
+            raise ValueError(f"Split '{split}' not found in cfg.data")
+
+        split_cfg = cfg.data[split]
+        views_dims = cfg.views_dims
+
         if views_dims is None:
-            raise ValueError("views_dims must be provided")
+            raise ValueError("views_dims must be specified")
+
+        project_root = Path.cwd().resolve()
 
         # =====================================================
-        # CASE 1: Dummy / validation mode
+        # CASE 1: Real CSV data
         # =====================================================
-        if data_path is None or str(data_path).lower() == "none":
+        if split_cfg.views is not None and split_cfg.labels is not None:
+            views = []
+
+            if len(split_cfg.views) != len(views_dims):
+                raise ValueError(
+                    f"Number of views ({len(split_cfg.views)}) "
+                    f"does not match views_dims ({len(views_dims)})"
+                )
+
+            for v_cfg in split_cfg.views:
+                path = project_root / v_cfg.path
+                if not path.exists():
+                    raise FileNotFoundError(f"View file not found: {path}")
+                views.append(np.loadtxt(path, delimiter=","))
+
+            y_path = project_root / split_cfg.labels
+            if not y_path.exists():
+                raise FileNotFoundError(f"Label file not found: {y_path}")
+            y = np.loadtxt(y_path, delimiter=",")
+
+        # =====================================================
+        # CASE 2: Synthetic fallback
+        # =====================================================
+        else:
             views, y, _ = generate_multi_dataset(
                 n=1000,
                 dims=views_dims,
                 seed=42,
-            )
-
-        # =====================================================
-        # CASE 2: User real data
-        # =====================================================
-        else:
-            # -----------------------------
-            # TODO: USER IMPLEMENTATION
-            # -----------------------------
-            # Example (user replaces this):
-            #
-            # views = [
-            #     load_view1(data_path),
-            #     load_view2(data_path),
-            # ]
-            # y = load_labels(data_path)
-            #
-            raise NotImplementedError(
-                "Real data loading not implemented. "
-                "Replace this block in UserMultiViewDataset."
             )
 
         # =====================================================
@@ -75,8 +87,7 @@ class UserMultiViewDataset(MultiViewDataset):
 
     def __getitem__(self, idx):
         xs = [v[idx] for v in self.views]
-        y = self.labels[idx]
-        return xs, y
+        return xs, self.labels[idx]
 
     # -----------------------------
     # MultiViewDataset contract

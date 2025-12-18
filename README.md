@@ -25,6 +25,10 @@ pip install -r requirements.txt
 python train.py
 ```
 
+## To use your own data
+- revise datapath from config/data/default.yaml
+
+
 ## Use MLFLOW to track experiments
 
 ```bash
@@ -35,7 +39,7 @@ mllfow ui
 - from scripts/run_sweep.sh, set the range you want to sweep run below cmd. it will log the the experiments to your mlflow and return best hyperparameteres
 ```bash
 bash run_sweep.sh 
-'''
+```
 
 ## Get feature importance 
 - use get_important_features from src/utils/feature_importance.py 

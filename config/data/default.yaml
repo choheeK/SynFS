@@ -1,5 +1,18 @@
-train_path: null
-val_path: null
-views_dims : [10, 10]
+data:
+  train:
+    views:
+      - path: synthetic_dummy_data/view1.csv
+      - path: synthetic_dummy_data/view2.csv
+    labels: synthetic_dummy_data/y.csv
+
+  val:
+    views: null
+    labels: null
+
+  test:
+    views: null
+    labels: null
+
+views_dims: [10, 10]
 batch_size: 64
 num_workers: 4
