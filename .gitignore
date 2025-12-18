@@ -21,3 +21,12 @@ multirun/
 # Old Files
 # ----------------------
 archive/
+
+
+# -----------------------
+# dummy
+# ----------------------
+
+Notebooks/dummy_data_example.ipynb
+Notebooks/dummy_lipids.csv
+SynFS/Notebooks/dummy_proteins.csv
