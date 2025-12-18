@@ -1,0 +1,10 @@
+defaults:
+  - _self_
+  - model: synfs
+  - data: default
+  - optim: adam
+  - mlflow: default
+
+seed: 0
+nr_epochs: 20
+device: cpu

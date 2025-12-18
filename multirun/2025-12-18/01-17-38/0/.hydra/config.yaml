@@ -1,0 +1,59 @@
+seed: 0
+nr_epochs: 20
+device: cpu
+model:
+  views_dims:
+  - 10
+  - 10
+  hidden_dims:
+  - 32
+  - 32
+  output_dim: 2
+  batch_norm: true
+  dropout: true
+  activation: relu
+  learning_rate: 0.001
+  s_learning_rate: 0.001
+  weight_decay: 0.0001
+  s_lam: 0.1
+  ns_lam: 0.1
+  ns_alpha: 0.2
+  save_dir: ./checkpoints/
+data:
+  train_path: null
+  val_path: null
+  views_dims:
+  - 10
+  - 10
+  batch_size: 64
+  num_workers: 4
+optim:
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.001
+    weight_decay: 0.0001
+mlflow:
+  enabled: true
+  experiment_name: default
+sweeper:
+  hydra:
+    sweeper:
+      _target_: hydra_plugins.hydra_optuna_sweeper.OptunaSweeper
+      direction: maximize
+      n_trials: 3
+      sampler:
+        _target_: optuna.samplers.TPESampler
+        seed: 0
+      params:
+        model.learning_rate:
+          distribution: loguniform
+          low: 0.0001
+          high: 0.01
+        model.s_lam:
+          distribution: uniform
+          low: 0.01
+          high: 1.0
+        model.ns_alpha:
+          distribution: uniform
+          low: 0.0
+          high: 0.5
