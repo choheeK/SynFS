@@ -133,6 +133,7 @@ SynFS/
 │   ├── data/          # Multi-view datasets
 │   ├── utils/         # Logging, seeding
 ├── config/            # Hydra configs
+├── Noteboooks/        # synthetic, mnist example
 ├── synthetic_dummy_data/
 ├── train.py
 └── README.md
