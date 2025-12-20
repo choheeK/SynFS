@@ -12,7 +12,8 @@ SynFS explicitly learns:
 
 ## Architiecture Overview
 
-image.png
+<img width="776" height="283" alt="image" src="https://github.com/user-attachments/assets/4f2b0358-7d82-4963-aff9-d4c00221aa1c" />
+
 
 ## Citation
 
