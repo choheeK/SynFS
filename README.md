@@ -113,12 +113,12 @@ views, y, meta = generate_multi_dataset(
 - set threshold you over which select
 - it will return the index of important features (you can also see name of feature if you pass featre_names)
 - example output
-
+```
 [synergistic] threshold=0.7
   total features     : 500
   selected features  : 2
   indices: [  0 251]
-
+```
 
 ## Repository Structure
 
