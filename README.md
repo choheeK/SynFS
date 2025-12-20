@@ -1,13 +1,14 @@
 # SynFS : Discovering Features with Synergistic Interactions in Multiple Views
 
-SynFS is a deep learning framework for disentangling synergistic and non-synergistic features in multi-view data.
+SynFS is a deep learning framework for disentangling** synergistic and non-synergistic features** in multi-view data.
+
 It is designed for scenarios where predictive performance arises not only from individual views, but from interactions across views.
 
 SynFS explicitly learns:
 
-Synergistic features: features that are predictive only when combined across views
+**Synergistic features:** features that are predictive only when combined across views
 
-Non-synergistic features: features that are predictive independently within a single view
+**Non-synergistic features: **features that are predictive independently within a single view
 
 ## Architiecture Overview
 
