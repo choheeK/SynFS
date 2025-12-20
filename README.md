@@ -122,6 +122,15 @@ views, y, meta = generate_multi_dataset(
 
 ## Repository Structure
 
-```
-SynFS/ ├── src/ │ ├── models/ # SynFS model & selectors │ ├── trainer/ # Training logic │ ├── data/ # Multi-view datasets │ ├── utils/ # Logging, seeding ├── config/ # Hydra configs ├── synthetic_dummy_data/ ├── train.py └── README.md
+```text
+SynFS/
+├── src/
+│   ├── models/        # SynFS model & selectors
+│   ├── trainer/       # Training logic
+│   ├── data/          # Multi-view datasets
+│   ├── utils/         # Logging, seeding
+├── config/            # Hydra configs
+├── synthetic_dummy_data/
+├── train.py
+└── README.md
 ```
