@@ -16,13 +16,14 @@ image.png
 ## Citation
 
 if you add SynFS in your research, please cite: 
-
+```text
 @inproceedings{kim2024discovering,
   title={Discovering features with synergistic interactions in multiple views},
   author={Kim, Chohee and Van Der Schaar, Mihaela and Lee, Changhee},
   booktitle={Forty-first International Conference on Machine Learning},
   year={2024}
 }
+```
 
 
 ## How to Use 
