@@ -67,7 +67,9 @@ batch_size: 64
 ```
 Each view is shape of (N, D_v).
 
-## Run single experiment 
+## Run experiments
+
+- single experiment
 
 ```
 python train.py
