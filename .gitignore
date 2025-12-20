@@ -29,4 +29,10 @@ archive/
 
 Notebooks/dummy_data_example.ipynb
 Notebooks/dummy_lipids.csv
-SynFS/Notebooks/dummy_proteins.csv
+Notebooks/dummy_proteins.csv
+
+
+# -----------------------
+# mnist datset
+# ----------------------
+Notebooks/mnist/

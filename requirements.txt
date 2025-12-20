@@ -6,6 +6,7 @@ pandas
 
 # PyTorch
 torch==2.2.1
+torchvision
 
 # Training / utilities
 tqdm
