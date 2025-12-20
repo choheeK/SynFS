@@ -78,7 +78,7 @@ Each view is shape of (N, D_v).
 python train.py
 ```
 
-- you cana trac your experiments with mlflow
+- you cana track your experiments with mlflow
 
 ```bash
 mllfow ui
