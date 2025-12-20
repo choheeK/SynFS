@@ -10,22 +10,14 @@ SynFS explicitly learns:
 
 **Non-synergistic features:** features that are predictive independently within a single view
 
+**Paper:** https://openreview.net/pdf?id=hFEgae0od4  
+**Venue:** ICML 2024 (Poster)
+
+
 ## Architiecture Overview
 
 <img width="776" height="283" alt="image" src="https://github.com/user-attachments/assets/4f2b0358-7d82-4963-aff9-d4c00221aa1c" />
 
-
-## Citation
-
-if you add SynFS in your research, please cite: 
-```text
-@inproceedings{kim2024discovering,
-  title={Discovering features with synergistic interactions in multiple views},
-  author={Kim, Chohee and Van Der Schaar, Mihaela and Lee, Changhee},
-  booktitle={Forty-first International Conference on Machine Learning},
-  year={2024}
-}
-```
 
 
 ## How to Use 
@@ -137,4 +129,16 @@ SynFS/
 ├── synthetic_dummy_data/
 ├── train.py
 └── README.md
+```
+
+## Citation
+
+if you add SynFS in your research, please cite: 
+```text
+@inproceedings{kim2024discovering,
+  title={Discovering features with synergistic interactions in multiple views},
+  author={Kim, Chohee and Van Der Schaar, Mihaela and Lee, Changhee},
+  booktitle={Forty-first International Conference on Machine Learning},
+  year={2024}
+}
 ```
