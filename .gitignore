@@ -36,3 +36,8 @@ Notebooks/dummy_proteins.csv
 # mnist datset
 # ----------------------
 Notebooks/mnist/
+
+
+# Python bytecode
+__pycache__/
+*.pyc
