@@ -1,5 +1,5 @@
 # views_dims will be overridden via CLI or defaults
-views_dims: [10, 10]
+views_dims: ${data.views_dims}
 hidden_dims: [32, 32]
 output_dim: 2
 
